@@ -172,7 +172,7 @@ Built with ❤️ for CS 452
 
 - Repository: https://github.com/bgub/conference-rag
 - Live application: https://bgub.github.io/conference-rag/
-- Working RAG screenshot: [docs/rag-query.png](docs/rag-query.png)
+- Working RAG screenshot: [docs/rag-query.jpg](docs/rag-query.jpg)
 
 ### Custom feature: linked citation viewer and evidence-aware answers
 
