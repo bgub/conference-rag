@@ -762,3 +762,13 @@ input:focus {
         flex-direction: column;
     }
 }
+
+.rag-answer-text {
+    white-space: pre-wrap;
+}
+
+.rag-answer-text a {
+    color: var(--accent, #3ecf8e);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}

@@ -1,0 +1,13 @@
+project_id = "conference-rag"
+
+[functions.embed-question]
+# Also validate the session in the handler before any provider call.
+verify_jwt = true
+
+[functions.embed-corpus]
+# Validates an existing project secret key; never accepts a public key or user JWT.
+verify_jwt = false
+
+[functions.generate-answer]
+# Handler also validates Supabase Auth and forwards the user JWT for RLS.
+verify_jwt = true

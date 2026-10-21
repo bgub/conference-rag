@@ -32,7 +32,7 @@ function initializeSupabase() {
         try {
             supabaseClient = window.supabase.createClient(
                 SUPABASE_CONFIG.url,
-                SUPABASE_CONFIG.anonKey
+                SUPABASE_CONFIG.anonKey,
             );
             // Listen for auth state changes
             supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -47,7 +47,6 @@ function initializeSupabase() {
         }
     }
 }
-
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -71,18 +70,12 @@ const checkRedirect = document.getElementById('check-redirect');
 // Search Panel Elements
 const keywordInput = document.getElementById('keyword-input');
 const keywordBtn = document.getElementById('keyword-btn');
-const keywordResults = document.getElementById('keyword-results');
-const keywordStatus = document.getElementById('keyword-status');
 
 const semanticInput = document.getElementById('semantic-input');
 const semanticBtn = document.getElementById('semantic-btn');
-const semanticResults = document.getElementById('semantic-results');
-const semanticStatus = document.getElementById('semantic-status');
 
 const ragInput = document.getElementById('rag-input');
 const ragBtn = document.getElementById('rag-btn');
-const ragResults = document.getElementById('rag-results');
-const ragStatus = document.getElementById('rag-status');
 
 // ============================================
 // SETUP BANNER DETECTION
@@ -92,7 +85,7 @@ async function runSetupChecks() {
     const setupStatus = {
         configValid: false,
         connectionOk: false,
-        allGood: false
+        allGood: false,
     };
 
     // Calculate and display GitHub Pages URL (full URL with path)
@@ -104,7 +97,7 @@ async function runSetupChecks() {
     // Set setup guide link to GitHub repo (for better preview)
     const setupGuideLink = document.getElementById('setup-guide-link');
     if (setupGuideLink && currentUrl.includes('github.io')) {
-        const pathParts = window.location.pathname.split('/').filter(p => p);
+        const pathParts = window.location.pathname.split('/').filter((p) => p);
         const repoName = pathParts[0] || 'conference-rag';
         const username = currentUrl.split('.github.io')[0].split('//')[1];
         setupGuideLink.href = `https://github.com/${username}/${repoName}/blob/main/README.md`;
@@ -119,7 +112,7 @@ async function runSetupChecks() {
             const supabaseUrl = new URL(SUPABASE_CONFIG.url);
             const projectId = supabaseUrl.hostname.split('.')[0];
             supabaseConfigLink.href = `https://supabase.com/dashboard/project/${projectId}/auth/url-configuration`;
-        } catch (err) {
+        } catch {
             supabaseConfigLink.style.display = 'none';
         }
     } else if (supabaseConfigLink) {
@@ -137,14 +130,14 @@ async function runSetupChecks() {
         // Check 2: Supabase connection
         if (supabaseClient) {
             try {
-                const { data, error } = await supabaseClient.auth.getSession();
+                const { error } = await supabaseClient.auth.getSession();
                 if (error) {
                     updateCheckItem(checkConnection, 'error', '❌', `Connection failed: ${error.message}`);
                 } else {
                     updateCheckItem(checkConnection, 'success', '✅', 'Supabase connection OK');
                     setupStatus.connectionOk = true;
                 }
-            } catch (err) {
+            } catch {
                 updateCheckItem(checkConnection, 'error', '❌', 'Connection failed - check config');
             }
         } else {
@@ -245,8 +238,8 @@ if (loginBtn) {
         const { error } = await supabaseClient.auth.signInWithOtp({
             email: email,
             options: {
-                emailRedirectTo: window.location.origin + window.location.pathname
-            }
+                emailRedirectTo: window.location.origin + window.location.pathname,
+            },
         });
 
         showLoading(false);
@@ -341,9 +334,9 @@ async function checkSearchReadiness() {
         if (hasEmbeddings) {
             try {
                 const { data, error: fnError } = await supabaseClient.functions.invoke('embed-question', {
-                    body: { question: 'test' }
+                    body: { health: true },
                 });
-                semanticReady = !fnError;
+                semanticReady = !fnError && data?.ready === true;
             } catch {
                 // CORS or network error → function not deployed
             }
@@ -356,9 +349,9 @@ async function checkSearchReadiness() {
         } else {
             try {
                 const { data, error: fnError } = await supabaseClient.functions.invoke('generate-answer', {
-                    body: { question: 'test', context_talks: [] }
+                    body: { health: true },
                 });
-                setSearchReady('rag', !fnError || fnError.context?.status !== 404);
+                setSearchReady('rag', !fnError && data?.ready === true);
             } catch {
                 setSearchReady('rag', false);
             }
@@ -438,7 +431,7 @@ async function keywordSearch() {
                     title: row.title || 'Unknown Talk',
                     speaker: row.speaker || 'Unknown Speaker',
                     url: row.url || '',
-                    sentences: []
+                    sentences: [],
                 };
             }
             talks[talkId].sentences.push(highlightKeyword(row.text, query));
@@ -447,13 +440,14 @@ async function keywordSearch() {
         let html = '';
         for (const talk of Object.values(talks)) {
             html += `<div class="result-card">
-                <div class="result-title"><a href="${escapeHtml(talk.url)}" target="_blank" class="result-title-link">${escapeHtml(talk.title)}</a></div>
+                <div class="result-title"><a href="${escapeHtml(talk.url)}" target="_blank" class="result-title-link">${
+                escapeHtml(talk.title)
+            }</a></div>
                 <div class="result-speaker">by ${escapeHtml(talk.speaker)}</div>
                 <div class="result-sentences">${talk.sentences.slice(0, 3).join('<br>')}</div>
             </div>`;
         }
         showResults('keyword', html);
-
     } catch (error) {
         showResults('keyword', `<div class="result-error">Error: ${escapeHtml(error.message)}</div>`);
     } finally {
@@ -498,7 +492,9 @@ async function semanticSearch() {
             html += `<div class="result-card">
                 <div class="result-card-header">
                     <div>
-                        <div class="result-title"><a href="${escapeHtml(result.url)}" target="_blank" class="result-title-link">${escapeHtml(result.title)}</a></div>
+                        <div class="result-title"><a href="${
+                escapeHtml(result.url)
+            }" target="_blank" class="result-title-link">${escapeHtml(result.title)}</a></div>
                         <div class="result-speaker">by ${escapeHtml(result.speaker)}</div>
                     </div>
                     ${badge}
@@ -507,7 +503,6 @@ async function semanticSearch() {
             </div>`;
         }
         showResults('semantic', html);
-
     } catch (error) {
         showResults('semantic', `<div class="result-error">Error: ${escapeHtml(error.message)}</div>`);
     } finally {
@@ -527,51 +522,33 @@ async function askQuestion() {
     clearResults('rag');
 
     try {
-        // Step 1: Get embedding
-        const embedding = await getEmbedding(question);
-
-        // Step 2: Search for similar sentences
-        const results = await searchSentences(embedding);
-
-        // Step 3: Group by talk (with similarity scores and URLs)
-        const topTalks = groupByTalk(results);
-
-        // Step 4: Fetch full talk text for richer context
-        const enrichedTalks = await fetchFullTalkText(topTalks);
-
-        // Step 5: Generate answer with full context
-        const answer = await generateAnswer(question, enrichedTalks);
-
-        // Compute overall similarity (weighted avg across source talks)
-        const overallSimilarity = topTalks.reduce((sum, t) => sum + t.avgSimilarity, 0) / topTalks.length;
-        const overallBadge = similarityBadge(overallSimilarity);
-        const simClass = overallSimilarity >= 0.70 ? 'similarity-high'
-            : overallSimilarity >= 0.40 ? 'similarity-mid' : 'similarity-low';
-
-        let html = `<div class="result-card rag-answer rag-${simClass}">
-            <div class="result-card-header">
-                <div class="result-title">AI Answer</div>
-                ${overallBadge}
-            </div>
-            <div class="result-sentences">${escapeHtml(answer)}</div>
+        const { answer, sources, insufficient_evidence: insufficient } = await generateAnswer(question);
+        const sourceIds = new Set(sources.map((source) => source.id));
+        const answerHtml = escapeHtml(answer).replace(
+            /\[(\d+)\]/g,
+            (citation, id) =>
+                sourceIds.has(Number(id))
+                    ? `<a href="#rag-source-${id}" aria-label="Source ${id}">${citation}</a>`
+                    : citation,
+        );
+        let html = `<div class="result-card rag-answer">
+            <div class="result-card-header"><div class="result-title">${
+            insufficient ? 'Insufficient evidence' : 'AI Answer'
+        }</div></div>
+            <div class="result-sentences rag-answer-text">${answerHtml}</div>
         </div>`;
-
-        // Show source talks with per-talk similarity badges and links
-        html += '<div class="result-sources"><strong>Sources:</strong></div>';
-        for (const talk of topTalks) {
-            const talkBadge = similarityBadge(talk.avgSimilarity);
-            html += `<div class="result-card result-source">
-                <div class="result-card-header">
-                    <div>
-                        <div class="result-title"><a href="${escapeHtml(talk.url)}" target="_blank" class="result-title-link">${escapeHtml(talk.title)}</a></div>
-                        <div class="result-speaker">by ${escapeHtml(talk.speaker)}</div>
-                    </div>
-                    ${talkBadge}
-                </div>
+        if (sources.length) html += '<div class="result-sources"><strong>Sources:</strong></div>';
+        for (const source of sources) {
+            html += `<div class="result-card result-source" id="rag-source-${source.id}">
+                <div class="result-title"><a href="${
+                escapeHtml(source.url)
+            }" target="_blank" rel="noopener noreferrer" class="result-title-link">[${source.id}] ${
+                escapeHtml(source.title)
+            }</a></div>
+                <div class="result-speaker">by ${escapeHtml(source.speaker.replace(/^By\s+/i, ''))}</div>
             </div>`;
         }
         showResults('rag', html);
-
     } catch (error) {
         showResults('rag', `<div class="result-error">Error: ${escapeHtml(error.message)}</div>`);
     } finally {
@@ -586,7 +563,7 @@ async function askQuestion() {
 // Get embedding via Edge Function
 async function getEmbedding(text) {
     const { data, error } = await supabaseClient.functions.invoke('embed-question', {
-        body: { question: text }
+        body: { question: text },
     });
 
     if (error) {
@@ -602,98 +579,42 @@ async function searchSentences(embedding) {
 
     const { data, error } = await supabaseClient.rpc('match_sentences', {
         query_embedding: embedding,
-        match_count: 20
+        match_count: 20,
     });
 
     if (error) throw new Error(`Database search failed: ${error.message}`);
-    return data;
-}
+    if (!data?.length) return [];
 
-// Group search results by talk, computing average similarity per talk
-function groupByTalk(sentences) {
-    const talkMap = {};
-
-    for (const sent of sentences) {
-        if (!talkMap[sent.talk_id]) {
-            talkMap[sent.talk_id] = {
-                talk_id: sent.talk_id,
-                title: sent.title,
-                speaker: sent.speaker,
-                url: sent.url,
-                sentences: [],
-                totalSimilarity: 0
-            };
-        }
-        talkMap[sent.talk_id].sentences.push(sent.text);
-        talkMap[sent.talk_id].totalSimilarity += sent.similarity;
-    }
-
-    return Object.values(talkMap)
-        .sort((a, b) => b.totalSimilarity / b.sentences.length - a.totalSimilarity / a.sentences.length)
-        .slice(0, 3)
-        .map(talk => ({
-            talk_id: talk.talk_id,
-            title: talk.title,
-            speaker: talk.speaker,
-            url: talk.url,
-            text: talk.sentences.join(' '),
-            // TODO: Is average similarity the right metric? Alternatives worth researching:
-            // - Max similarity (best single match per talk)
-            // - Average of top-3 sentences (reduces noise from weak matches)
-            // - Weighted by sentence count (rewards talks with more matches)
-            avgSimilarity: talk.totalSimilarity / talk.sentences.length
-        }));
-}
-
-// Fetch full talk text by querying all sentences for given talk_ids, ordered by sentence_num.
-// Uses a single batched query via .in() for all talk_ids — no parallel calls needed.
-async function fetchFullTalkText(talks) {
-    if (!supabaseClient || !talks.length) return talks;
-
-    const talkIds = talks.map(t => t.talk_id);
-
-    const { data, error } = await supabaseClient
+    // The starter RPC returns sentence IDs but omits their source URLs.
+    // Fetch links in one small query using the same user's RLS permissions.
+    const { data: links, error: linkError } = await supabaseClient
         .from('sentence_embeddings')
-        .select('talk_id, sentence_num, text')
-        .in('talk_id', talkIds)
-        .order('talk_id')
-        .order('sentence_num');
-
-    if (error || !data) {
-        console.warn('Failed to fetch full talk text, using snippets:', error?.message);
-        return talks;
-    }
-
-    // Group fetched sentences by talk_id
-    const fullTextMap = {};
-    for (const row of data) {
-        if (!fullTextMap[row.talk_id]) fullTextMap[row.talk_id] = [];
-        fullTextMap[row.talk_id].push(row.text);
-    }
-
-    // Replace snippet text with full talk text
-    return talks.map(talk => ({
-        ...talk,
-        text: fullTextMap[talk.talk_id]
-            ? fullTextMap[talk.talk_id].join(' ')
-            : talk.text
-    }));
+        .select('id, url')
+        .in('id', data.map((sentence) => sentence.id));
+    if (linkError) throw new Error(`Could not load source links: ${linkError.message}`);
+    const urls = new Map(links.map((sentence) => [sentence.id, sentence.url]));
+    return data.map((sentence) => ({ ...sentence, url: urls.get(sentence.id) || '' }));
 }
 
 // Generate answer via Edge Function
-async function generateAnswer(question, contextTalks) {
+async function generateAnswer(question) {
     const { data, error } = await supabaseClient.functions.invoke('generate-answer', {
         body: {
-            question: question,
-            context_talks: contextTalks
-        }
+            question,
+        },
     });
 
     if (error) {
-        throw new Error(data?.error || 'Failed to generate answer');
+        let message = data?.error;
+        if (!message && error.context instanceof Response) {
+            try {
+                message = (await error.context.json()).error;
+            } catch { /* Use fallback below. */ }
+        }
+        throw new Error(message || 'Failed to generate answer');
     }
 
-    return data.answer;
+    return data;
 }
 
 // ============================================
@@ -736,21 +657,27 @@ function similarityBadge(similarity) {
 
 // Keyword search
 if (keywordBtn) keywordBtn.addEventListener('click', keywordSearch);
-if (keywordInput) keywordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') keywordSearch();
-});
+if (keywordInput) {
+    keywordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') keywordSearch();
+    });
+}
 
 // Semantic search
 if (semanticBtn) semanticBtn.addEventListener('click', semanticSearch);
-if (semanticInput) semanticInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') semanticSearch();
-});
+if (semanticInput) {
+    semanticInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') semanticSearch();
+    });
+}
 
 // RAG search
 if (ragBtn) ragBtn.addEventListener('click', askQuestion);
-if (ragInput) ragInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') askQuestion();
-});
+if (ragInput) {
+    ragInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') askQuestion();
+    });
+}
 
 // ============================================
 // DEPLOY TIMESTAMP
@@ -761,7 +688,7 @@ function fetchDeployTimestamp() {
     if (!deployDateEl) return;
 
     fetch(window.location.href, { method: 'HEAD' })
-        .then(r => {
+        .then((r) => {
             const lastModified = r.headers.get('Last-Modified');
             if (lastModified) {
                 const date = new Date(lastModified);
@@ -791,7 +718,7 @@ function recordPageView() {
         .from('page_views')
         .insert({
             page_url: window.location.href,
-            user_agent: navigator.userAgent
+            user_agent: navigator.userAgent,
         })
         .then(() => {
             // Query the total count
